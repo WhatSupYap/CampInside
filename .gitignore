@@ -1,0 +1,38 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Build output
+dist/
+build/
+out/
+
+# Logs
+logs/
+*.log
+
+# Personal files
+*.local
+*.secret
+
+# OneDrive sync files
+~$*
+
+# 기타 민감한 파일 추가
+venv/
+
+# SSL/TLS certificates
+*.crt
+*.pem
