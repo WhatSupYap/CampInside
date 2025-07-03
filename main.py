@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 import os
 import uvicorn
 from dotenv import load_dotenv
@@ -33,9 +34,109 @@ DB_CONFIG = {
     'connect_timeout': 10,
 }
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def read_root():
-    return {"message": "Hello FastAPI!"}
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>CampInside - Hello World!</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .container {
+                text-align: center;
+                background: white;
+                padding: 3rem;
+                border-radius: 20px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                max-width: 500px;
+                margin: 20px;
+            }
+            h1 {
+                color: #2c3e50;
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                font-weight: 700;
+            }
+            p {
+                color: #7f8c8d;
+                font-size: 1.2rem;
+                margin-bottom: 2rem;
+                line-height: 1.6;
+            }
+            .badge {
+                display: inline-block;
+                background: #3498db;
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 25px;
+                font-size: 0.9rem;
+                margin: 0.5rem;
+                font-weight: 500;
+            }
+            .links {
+                margin-top: 2rem;
+            }
+            .links a {
+                display: inline-block;
+                background: #2ecc71;
+                color: white;
+                text-decoration: none;
+                padding: 0.8rem 1.5rem;
+                border-radius: 10px;
+                margin: 0.5rem;
+                transition: background 0.3s;
+                font-weight: 500;
+            }
+            .links a:hover {
+                background: #27ae60;
+            }
+            .emoji {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="emoji">🏕️</div>
+            <h1>Hello World!</h1>
+            <p>CampInside API에 오신 것을 환영합니다!<br>
+            FastAPI + PostgreSQL + AWS Lightsail로 구축된<br>
+            캠핑 예약 시스템입니다.</p>
+            
+            <div class="badges">
+                <span class="badge">FastAPI 2.0.0</span>
+                <span class="badge">PostgreSQL 17</span>
+                <span class="badge">Python 3.12</span>
+                <span class="badge">AWS Lightsail</span>
+            </div>
+            
+            <div class="links">
+                <a href="/docs" target="_blank">📚 API 문서</a>
+                <a href="/health" target="_blank">💚 헬스체크</a>
+                <a href="/db-status" target="_blank">🗄️ DB 상태</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html_content
+
+@app.get("/api", description="JSON API 응답")
+async def api_root():
+    return {"message": "Hello FastAPI!", "status": "success", "version": "2.0.0"}
 
 @app.get("/db-status")
 async def get_db_status():
