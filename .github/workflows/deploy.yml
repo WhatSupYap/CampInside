@@ -124,8 +124,10 @@ jobs:
           # }" | sudo tee /etc/nginx/sites-available/fastapi_proxy
           # sudo ln -sf /etc/nginx/sites-available/fastapi_proxy /etc/nginx/sites-enabled/fastapi_proxy
           # sudo systemctl restart nginx
-      env:
+      #env:
         # 환경 변수를 스크립트 내부에서 export 합니다.
         # Secrets는 GitHub Actions에서 스크립트로 안전하게 전달됩니다.
         # EC2_USER는 셸 변수로만 사용됩니다.
         # DB 관련 변수들은 위에 ExecStart의 Environment로 전달됩니다.
+
+

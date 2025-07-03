@@ -32,6 +32,7 @@ logs/
 
 # 기타 민감한 파일 추가
 venv/
+.memo
 
 # SSL/TLS certificates
 *.crt
