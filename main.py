@@ -11,7 +11,7 @@ load_dotenv() # .env 파일 로드
 app = FastAPI(
     title="CampInside API", 
     version="2.0.0",
-    description="PostgreSQL 17 + Python 3.12 기반 캠핑 예약 시스템"
+    description="PostgreSQL 17 + Python 3.12 기반 캠핑 예약 시스템 테스트"
 )
 
 # DB 연결 정보 (PostgreSQL 17 환경변수)
