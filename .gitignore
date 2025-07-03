@@ -1,3 +1,5 @@
+.gitignore
+
 # Node.js dependencies
 node_modules/
 npm-debug.log*
@@ -32,6 +34,7 @@ logs/
 
 # 기타 민감한 파일 추가
 .memo
+/docs
 
 # SSL/TLS certificates
 *.crt
