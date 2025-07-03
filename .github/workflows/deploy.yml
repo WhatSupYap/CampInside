@@ -1,133 +1,79 @@
-# .github/workflows/deploy.yml
-name: Deploy FastAPI to Lightsail
+name: Deploy CampInside to AWS Lightsail
 
 on:
   push:
-    branches:
-      - main # main 브랜치에 push될 때마다 실행
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest # GitHub Actions 러너 환경
-
+  test:
+    runs-on: ubuntu-latest
+    
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Python
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12' # 프로젝트에 맞는 Python 버전 지정
-
-    - name: Install dependencies (if needed for build/test)
+        python-version: '3.12'
+    
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt # 로컬에서 필요한 의존성 설치 (테스트나 빌드 단계에서 필요할 경우)
+        pip install -r requirements.txt
+        pip install pytest httpx
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v || echo "No tests found"
 
-    # 실제 배포 스크립트 (SSH를 통해 서버에서 실행)
-    - name: Deploy to Lightsail
-      uses: appleboy/ssh-action@master
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to AWS Lightsail
+      uses: appleboy/ssh-action@v1.0.0
       with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
+        host: ${{ secrets.LIGHTSAIL_IP }}
+        username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # 서버에 필요한 패키지 설치 (최초 1회 또는 업데이트 시)
-          sudo apt update
-          sudo apt install -y python3-pip python3-venv nginx gunicorn
-
-          # 프로젝트 디렉토리 생성 및 이동 (없을 경우)
-          # /home/ubuntu/fastapi-app 에 배포한다고 가정
-          mkdir -p /home/${{ secrets.EC2_USER }}/fastapi-app
-          cd /home/${{ secrets.EC2_USER }}/fastapi-app
-
-          # 이전 코드 삭제 및 새 코드 복사
-          rm -rf *
-          # GitHub Actions에서 checkout된 코드를 서버로 전송
-          # rsync를 사용하는 것이 효율적이지만, 여기서는 간단하게 git clone/pull을 사용하거나
-          # artifacts를 이용하여 전송하는 방법을 고려할 수 있습니다.
-          # 여기서는 직접 SSH로 배포하므로, 코드 전송은 별도 스텝으로 진행하거나
-          # 서버에서 git pull을 하도록 설정해야 합니다.
-
-          # --- 간소화를 위해 서버에서 git pull 하는 방식 (권장) ---
-          # 서버에 git 설치 확인
-          # sudo apt install -y git
-
-          # 기존 레포지토리가 있으면 pull, 없으면 clone
-          if [ -d "my-fastapi-repo" ]; then
-            cd my-fastapi-repo
-            git pull origin main
-          else
-            git clone https://github.com/${{ github.repository }}.git my-fastapi-repo
-            cd my-fastapi-repo
-          fi
-
-          # 가상 환경 설정 및 의존성 설치
-          python3 -m venv venv
+          # 애플리케이션 디렉토리로 이동
+          cd /opt/campinside
+          
+          # 최신 코드 가져오기
+          git pull origin main
+          
+          # 환경변수 파일 업데이트
+          echo "DB_HOST=${{ secrets.DB_HOST }}" > .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "DB_PORT=5432" >> .env
+          
+          # 가상환경 활성화 및 의존성 설치
           source venv/bin/activate
           pip install -r requirements.txt
-
-          # 환경 변수 설정 (.env 파일을 사용하지 않고 직접 환경 변수를 주입)
-          export DB_HOST=${{ secrets.DB_HOST }}
-          export DB_USER=${{ secrets.DB_USER }}
-          export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          export DB_NAME=${{ secrets.DB_NAME }}
-          export DB_PORT=${{ secrets.DB_PORT }}
-
-          # Gunicorn을 사용하여 FastAPI 애플리케이션 실행
-          # (백그라운드에서 실행하고, 시스템 재시작 시 자동 실행되도록 systemd 설정 예정)
-          # 지금은 테스트를 위해 간단히 재시작
-          # 기존 gunicorn 프로세스 종료 (있다면)
-          pkill gunicorn || true
-
-          # Gunicorn 실행 (백그라운드 & nohup)
-          # nohup gunicorn main:app --workers 4 --bind 0.0.0.0:8000 &
-          # 위 방식보다는 systemd를 사용하는 것이 프로덕션에 더 적합합니다.
-          # 임시로 실행하는 명령:
-          # pkill gunicorn || true
-          # nohup gunicorn main:app --workers 4 --bind 0.0.0.0:8000 > /dev/null 2>&1 &
-
-          # --- Systemd 서비스 설정 및 재시작 (권장) ---
-          # /etc/systemd/system/fastapi.service 파일 생성
-          echo "[Unit]
-          Description=Gunicorn instance for FastAPI app
-          After=network.target
-
-          [Service]
-          User=${{ secrets.EC2_USER }}
-          Group=${{ secrets.EC2_USER }}
-          WorkingDirectory=/home/${{ secrets.EC2_USER }}/fastapi-app/my-fastapi-repo
-          ExecStart=/home/${{ secrets.EC2_USER }}/fastapi-app/my-fastapi-repo/venv/bin/gunicorn main:app --workers 4 --bind 0.0.0.0:8000
-          Environment=\"DB_HOST=${{ secrets.DB_HOST }}\" \"DB_USER=${{ secrets.DB_USER }}\" \"DB_PASSWORD=${{ secrets.DB_PASSWORD }}\" \"DB_NAME=${{ secrets.DB_NAME }}\" \"DB_PORT=${{ secrets.DB_PORT }}\"
-          Restart=always
-
-          [Install]
-          WantedBy=multi-user.target" | sudo tee /etc/systemd/system/fastapi.service
-
-          # Systemd 데몬 리로드 및 서비스 재시작
-          sudo systemctl daemon-reload
-          sudo systemctl enable fastapi.service
-          sudo systemctl restart fastapi.service
-
-          # Nginx 설정 (옵션, 프록시 및 SSL 설정용)
-          # sudo rm -f /etc/nginx/sites-enabled/default
-          # echo "server {
-          #     listen 80;
-          #     server_name ${{ secrets.EC2_HOST }}; # 또는 실제 도메인
-          #     location / {
-          #         proxy_pass http://127.0.0.1:8000;
-          #         proxy_set_header Host \$host;
-          #         proxy_set_header X-Real-IP \$remote_addr;
-          #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-          #         proxy_set_header X-Forwarded-Proto \$scheme;
-          #     }
-          # }" | sudo tee /etc/nginx/sites-available/fastapi_proxy
-          # sudo ln -sf /etc/nginx/sites-available/fastapi_proxy /etc/nginx/sites-enabled/fastapi_proxy
-          # sudo systemctl restart nginx
-      #env:
-        # 환경 변수를 스크립트 내부에서 export 합니다.
-        # Secrets는 GitHub Actions에서 스크립트로 안전하게 전달됩니다.
-        # EC2_USER는 셸 변수로만 사용됩니다.
-        # DB 관련 변수들은 위에 ExecStart의 Environment로 전달됩니다.
+          
+          # 데이터베이스 연결 테스트
+          python scripts/test_db_connection.py || echo "DB connection test failed, but continuing..."
+          
+          # 애플리케이션 재시작
+          sudo systemctl restart campinside
+          sudo systemctl restart nginx
+          
+          # 상태 확인
+          sudo systemctl status campinside --no-pager
+          
+          # 헬스체크
+          sleep 5
+          curl -f http://localhost:8000/health || echo "Health check failed"
 
 

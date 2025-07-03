@@ -31,9 +31,33 @@ logs/
 ~$*
 
 # 기타 민감한 파일 추가
-venv/
 .memo
 
 # SSL/TLS certificates
 *.crt
 *.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+*.egg-info/
+.coverage
+.pytest_cache/
+.hypothesis/
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# AWS
+*.pem
+aws-credentials
