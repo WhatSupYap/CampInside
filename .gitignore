@@ -34,7 +34,7 @@ logs/
 
 # 기타 민감한 파일 추가
 .memo
-/docs
+docs/
 
 # SSL/TLS certificates
 *.crt
